@@ -122,3 +122,17 @@ class ISchemaMutablePropertiesPlugin(Interface):
         """
         Add a new property to a property provider.
         """
+
+class IPortraitManagementPlugin(Interface):
+    """ Portrait management plugin interface """
+    
+    def getPortrait(member_id):
+        """ return member_id's portrait if you can.
+            Returns OFS.Image.Image instance or None """
+
+    def setPortrait(portrait, member_id):
+        """" store portrait for particular member.
+             portrait must be OFS.Image.Image instance """
+
+    def deletePortrait(member_id):
+        """ remove member_id's portrait """

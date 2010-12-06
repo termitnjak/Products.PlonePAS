@@ -15,6 +15,7 @@ from Products.PlonePAS import config
 from Products.PlonePAS.interfaces.plugins import IUserManagement
 from Products.PlonePAS.interfaces.plugins import IUserIntrospection
 from Products.PlonePAS.interfaces.plugins import ILocalRolesPlugin
+from Products.PlonePAS.interfaces.plugins import IPortraitManagementPlugin
 from Products.PlonePAS.interfaces import group as igroup
 
 from plone.session.plugins.session import manage_addSessionPlugin
@@ -112,6 +113,14 @@ def registerPluginTypes(pas):
 
     registerPluginType(pas, ILocalRolesPlugin, PluginInfo)
 
+    PluginInfo = {
+        'id' : 'IPortraitManagementPlugin',
+        'title': 'portrait_management',
+        'description': "Provided management of member portraits"
+        }
+
+    registerPluginType(pas, IPortraitManagementPlugin, PluginInfo)
+
 def setupPlugins(portal):
     uf = portal.acl_users
     logger.debug("\nPlugin setup")
@@ -175,6 +184,12 @@ def setupPlugins(portal):
         addRecursiveGroupsPlugin(plone_pas, 'recursive_groups', "Recursive Groups Plugin")
         activatePluginInterfaces(portal, 'recursive_groups')
         logger.debug("Added Recursive Groups plugin.")
+
+    found = uf.objectIds(['ZODB Portrait Provider'])
+    if not found:
+        plone_pas.manage_addZODBPortraitProvider('portraits')
+        logger.debug("Added Portrait Manager.")
+        activatePluginInterfaces(portal, "portraits")
 
 
 def setupAuthPlugins(portal, pas, plone_pas,

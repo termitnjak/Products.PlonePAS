@@ -14,6 +14,7 @@ from Products.PluggableAuthService.interfaces.authservice import IPluggableAuthS
 from Products.PluggableAuthService.interfaces.plugins import IPropertiesPlugin, IRoleAssignerPlugin
 
 from Products.PlonePAS.interfaces.plugins import IUserManagement
+from Products.PlonePAS.interfaces.plugins import IPortraitManagementPlugin
 from Products.PlonePAS.interfaces.group import IGroupManagement
 from Products.PlonePAS.interfaces.propertysheets import IMutablePropertySheet
 from Products.PlonePAS.interfaces.capabilities import IDeleteCapability, IPasswordSetCapability
@@ -38,16 +39,42 @@ class MemberDataTool(BaseTool):
 
     def _getPortrait(self, member_id):
         "return member_id's portrait if you can "
-        return self.portraits.get(member_id, None)
+        if IPluggableAuthService.providedBy(self.acl_users):
+            plugins = self._getPlugins()
+            portrait_managers = plugins.listPlugins(IPortraitManagementPlugin)
+            for mid, manager in portrait_managers:
+                result = manager.getPortrait(member_id)
+                if result is not None:
+                    return result
+
+        # BBB - compatibility with not migrated tool
+        storage = getattr(self, 'portraits', None)
+        if storage:
+            return self.portraits.get(member_id, None)
 
     def _setPortrait(self, portrait, member_id):
         " store portrait which must be a raw image in _portrais "
-        if member_id in self.portraits:
-            self.portraits._delObject(member_id)
-        self.portraits._setObject(id= member_id, object=portrait)
+        result = None
+        if IPluggableAuthService.providedBy(self.acl_users):
+            plugins = self._getPlugins()
+            portrait_managers = plugins.listPlugins(IPortraitManagementPlugin)
+            for mid, manager in portrait_managers:
+                result = manager.setPortrait(portrait, member_id)
+
+        if result is None:
+            # BBB - compatibility with not migrated tool
+            if member_id in self.portraits:
+                self.portraits._delObject(member_id)
+            self.portraits._setObject(id= member_id, object=portrait)
 
     def _deletePortrait(self, member_id):
         " remove member_id's portrait "
+        if IPluggableAuthService.providedBy(self.acl_users):
+            plugins = self._getPlugins()
+            portrait_managers = plugins.listPlugins(IPortraitManagementPlugin)
+            for mid, manager in portrait_managers:
+                manager.deletePortrait(member_id)
+
         if member_id in self.portraits:
             self.portraits._delObject(member_id)
 

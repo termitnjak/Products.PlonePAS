@@ -1,0 +1,30 @@
+<dtml-var manage_page_header>
+<dtml-var manage_tabs>
+
+<p>FIXME
+</p>
+
+<hr />
+<dtml-if do_migrate>
+  <dtml-let migrated="migratePortraits()">
+    <p>Migrated <dtml-var "migrated[0]"> portraits from MemberDataTool storage</p>
+    <p>There was <dtml-var "migrated[1]"> duplicated portraits. Those was removed from MemberDataTool storage and n ot changed in this storage.</p>
+  </dtml-let>
+<dtml-else>
+  <dtml-let info="portraitInfo()">
+    <p>MemberDataTool contains <dtml-var "info['md']"> portrait(s).</p>
+    <p>This plugin contains <dtml-var "info['plugin']"> portrait(s).</p>
+
+    <dtml-if expr="info['md']>0">
+          <form name="migrate_portraits"
+                method="POST"
+                action="manage_migrate_portraits">
+
+            <input type="submit" name="do_migrate"
+                   value="Migrate portraits from MemberDataTool" />
+          </form>
+    <dtml-else>
+          <p>Nothing to migrate</p>
+    </dtml-if>
+  </dtml-let>
+</dtml-if>
