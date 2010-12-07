@@ -47,11 +47,6 @@ class MemberDataTool(BaseTool):
                 if result is not None:
                     return result
 
-        # BBB - compatibility with not migrated tool
-        storage = getattr(self, 'portraits', None)
-        if storage:
-            return self.portraits.get(member_id, None)
-
     def _setPortrait(self, portrait, member_id):
         " store portrait which must be a raw image in _portrais "
         result = None
@@ -61,12 +56,6 @@ class MemberDataTool(BaseTool):
             for mid, manager in portrait_managers:
                 result = manager.setPortrait(portrait, member_id)
 
-        if result is None:
-            # BBB - compatibility with not migrated tool
-            if member_id in self.portraits:
-                self.portraits._delObject(member_id)
-            self.portraits._setObject(id= member_id, object=portrait)
-
     def _deletePortrait(self, member_id):
         " remove member_id's portrait "
         if IPluggableAuthService.providedBy(self.acl_users):
@@ -74,9 +63,6 @@ class MemberDataTool(BaseTool):
             portrait_managers = plugins.listPlugins(IPortraitManagementPlugin)
             for mid, manager in portrait_managers:
                 manager.deletePortrait(member_id)
-
-        if member_id in self.portraits:
-            self.portraits._delObject(member_id)
 
     security.declarePrivate('pruneMemberDataContents')
     def pruneMemberDataContents(self):
