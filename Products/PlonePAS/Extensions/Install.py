@@ -189,8 +189,13 @@ def setupPlugins(portal):
     if not found:
         plone_pas.manage_addZODBPortraitProvider('portraits')
         logger.debug("Added Portrait Manager.")
-        activatePluginInterfaces(portal, "portraits")
+        # activatePluginInterfaces(portal, "portraits")
 
+    found = uf.objectIds(['PortalMemberdata Portrait Provider'])
+    if not found:
+        plone_pas.manage_addPortalMemberdataPortraitProvider('memberdata-portraits')
+        logger.debug("Added Portrait Manager (PortalMemberdata).")
+        activatePluginInterfaces(portal, "memberdata-portraits")
 
 def setupAuthPlugins(portal, pas, plone_pas,
                      deactivate_basic_reset=True,

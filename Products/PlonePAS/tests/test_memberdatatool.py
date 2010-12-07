@@ -2,6 +2,8 @@ from DateTime import DateTime
 from OFS.Image import Image
 
 from Products.PloneTestCase.ptc import default_user
+from Products.PlonePAS.interfaces.plugins import IPortraitManagementPlugin
+from Products.CMFCore.utils import getToolByName
 
 from Products.PlonePAS.tests import base
 from Products.PlonePAS.tests import dummy
@@ -40,6 +42,11 @@ class TestMemberDataTool(base.TestCase):
 
     def testPruneMemberDataContents(self):
         # Only test what is not already tested elswhere
+        self.pas=getToolByName(self.portal, "acl_users")
+        # we must activate memberdata-portraits plugin to be able to test this 
+        for plugin in self.pas.plugins.getAllPlugins('IPortraitManagementPlugin')['available']:
+            if plugin=='memberdata-portraits':
+                self.pas.plugins.activatePlugin(IPortraitManagementPlugin, plugin)
         self.memberdata._setPortrait(Image(id=default_user, file=dummy.File(), title=''), default_user)
         self.memberdata._setPortrait(Image(id=default_user, file=dummy.File(), title=''), 'dummy')
         self.memberdata.pruneMemberDataContents()

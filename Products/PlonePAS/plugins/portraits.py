@@ -96,3 +96,56 @@ class ZODBPortraitProvider(BasePlugin):
 
         
 InitializeClass(ZODBPortraitProvider)
+
+def manage_addPortalMemberdataPortraitProvider(self, id, title='',
+                                          RESPONSE=None, **kw):
+    """
+    Create an instance of a portraits manager.
+    """
+    o = PortalMemberdataPortraitProvider(id, title, **kw)
+    self._setObject(o.getId(), o)
+
+    if RESPONSE is not None:
+        RESPONSE.redirect('manage_workspace')
+
+manage_addPortalMemberdataPortraitProviderForm = DTMLFile(
+    "../zmi/PortalMemberdataPortraitProviderForm", globals())
+    
+class PortalMemberdataPortraitProvider(BasePlugin):
+    """Reuse portal_memberdata portraits storage
+    """
+
+    meta_type = 'PortalMemberdata Portrait Provider'
+
+    implements(IPortraitManagementPlugin)
+    def __init__(self, id, title='', **kw):
+        """Create portrait provider.
+        """
+        self.id = id
+        self.title = title
+
+    def getPortrait(self, member_id):
+        """ return member_id's portrait if you can """
+        mds = getattr(getToolByName(self, 'portal_memberdata'), 'portraits', None)
+        if mds is not None:
+            return mds.get(member_id, None)
+        
+    def setPortrait(self, portrait, member_id):
+        """ store portrait for particular member.
+            portrait must be OFS.Image.Image """
+        mds = getattr(getToolByName(self, 'portal_memberdata'), 'portraits', None)
+        if mds is not None:
+            if member_id in mds:
+                mds._delObject(member_id)
+            mds._setObject(id= member_id, object=portrait)
+            return True
+        
+    def deletePortrait(self, member_id):
+        """ remove member_id's portrait """
+        mds = getattr(getToolByName(self, 'portal_memberdata'), 'portraits', None)
+        if mds is not None:
+            if member_id in mds:
+                mds._delObject(member_id)
+            return True
+
+InitializeClass(PortalMemberdataPortraitProvider)

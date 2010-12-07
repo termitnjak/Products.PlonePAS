@@ -57,6 +57,7 @@ try:
     registerMultiPlugin( cookie_handler.ExtendedCookieAuthHelper.meta_type )
     registerMultiPlugin( autogroup.AutoGroup.meta_type )
     registerMultiPlugin( portraits.ZODBPortraitProvider.meta_type )
+    registerMultiPlugin( portraits.PortalMemberdataPortraitProvider.meta_type )
 except RuntimeError:
     # make refresh users happy
     pass
@@ -138,5 +139,11 @@ def initialize(context):
                            permission = add_user_folders,
                            constructors = ( portraits.manage_addZODBPortraitProviderForm,
                                             portraits.manage_addZODBPortraitProvider ),
+                           visibility = None
+                           )
+    context.registerClass( portraits.PortalMemberdataPortraitProvider,
+                           permission = add_user_folders,
+                           constructors = ( portraits.manage_addPortalMemberdataPortraitProviderForm,
+                                            portraits.manage_addPortalMemberdataPortraitProvider ),
                            visibility = None
                            )
