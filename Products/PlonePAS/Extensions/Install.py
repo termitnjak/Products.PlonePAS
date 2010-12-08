@@ -193,9 +193,15 @@ def setupPlugins(portal):
 
     found = uf.objectIds(['PortalMemberdata Portrait Provider'])
     if not found:
-        plone_pas.manage_addPortalMemberdataPortraitProvider('memberdata-portraits')
+        plone_pas.manage_addPortalMemberdataPortraitProvider('portraits-memberdata')
         logger.debug("Added Portrait Manager (PortalMemberdata).")
-        activatePluginInterfaces(portal, "memberdata-portraits")
+        activatePluginInterfaces(portal, "portraits-memberdata")
+
+    found = uf.objectIds(['Gravatar Portrait Provider'])
+    if not found:
+        plone_pas.manage_addGravatarPortraitProvider('portraits-gravatar')
+        logger.debug("Added Gravatar Portrait Manager.")
+        activatePluginInterfaces(portal, "portraits-gravatar")
 
 def setupAuthPlugins(portal, pas, plone_pas,
                      deactivate_basic_reset=True,

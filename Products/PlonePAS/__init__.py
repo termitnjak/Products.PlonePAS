@@ -16,6 +16,7 @@ from plugins import crumbler
 from plugins import cookie_handler
 from plugins import autogroup
 from plugins import portraits
+from plugins import gravatar_portrait
 
 #################################
 # pas monkies
@@ -58,6 +59,7 @@ try:
     registerMultiPlugin( autogroup.AutoGroup.meta_type )
     registerMultiPlugin( portraits.ZODBPortraitProvider.meta_type )
     registerMultiPlugin( portraits.PortalMemberdataPortraitProvider.meta_type )
+    registerMultiPlugin( gravatar_portrait.GravatarPortraitProvider.meta_type )
 except RuntimeError:
     # make refresh users happy
     pass
@@ -145,5 +147,11 @@ def initialize(context):
                            permission = add_user_folders,
                            constructors = ( portraits.manage_addPortalMemberdataPortraitProviderForm,
                                             portraits.manage_addPortalMemberdataPortraitProvider ),
+                           visibility = None
+                           )
+    context.registerClass( gravatar_portrait.GravatarPortraitProvider,
+                           permission = add_user_folders,
+                           constructors = ( gravatar_portrait.manage_addGravatarPortraitProviderForm,
+                                            gravatar_portrait.manage_addGravatarPortraitProvider ),
                            visibility = None
                            )

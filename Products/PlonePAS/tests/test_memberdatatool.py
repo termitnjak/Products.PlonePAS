@@ -43,9 +43,9 @@ class TestMemberDataTool(base.TestCase):
     def testPruneMemberDataContents(self):
         # Only test what is not already tested elswhere
         self.pas=getToolByName(self.portal, "acl_users")
-        # we must activate memberdata-portraits plugin to be able to test this 
+        # we must activate portraits-memberdata plugin to be able to test this 
         for plugin in self.pas.plugins.getAllPlugins('IPortraitManagementPlugin')['available']:
-            if plugin=='memberdata-portraits':
+            if plugin=='portraits-memberdata':
                 self.pas.plugins.activatePlugin(IPortraitManagementPlugin, plugin)
         self.memberdata._setPortrait(Image(id=default_user, file=dummy.File(), title=''), default_user)
         self.memberdata._setPortrait(Image(id=default_user, file=dummy.File(), title=''), 'dummy')

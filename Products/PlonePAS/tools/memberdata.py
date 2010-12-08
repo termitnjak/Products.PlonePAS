@@ -20,6 +20,7 @@ from Products.PlonePAS.interfaces.propertysheets import IMutablePropertySheet
 from Products.PlonePAS.interfaces.capabilities import IDeleteCapability, IPasswordSetCapability
 from Products.PlonePAS.interfaces.capabilities import IGroupCapability, IAssignRoleCapability
 from Products.PlonePAS.interfaces.capabilities import IManageCapabilities
+from Products.PlonePAS.interfaces.capabilities import IChangePortraitCapability
 from Products.PlonePAS.utils import getCharset
 from AccessControl.requestmethod import postonly
 
@@ -49,12 +50,11 @@ class MemberDataTool(BaseTool):
 
     def _setPortrait(self, portrait, member_id):
         " store portrait which must be a raw image in _portrais "
-        result = None
         if IPluggableAuthService.providedBy(self.acl_users):
             plugins = self._getPlugins()
             portrait_managers = plugins.listPlugins(IPortraitManagementPlugin)
             for mid, manager in portrait_managers:
-                result = manager.setPortrait(portrait, member_id)
+                manager.setPortrait(portrait, member_id)
 
     def _deletePortrait(self, member_id):
         " remove member_id's portrait "
@@ -233,7 +233,8 @@ InitializeClass(MemberDataTool)
 class MemberData(BaseMemberData):
 
     security = ClassSecurityInfo()
-    implements(IManageCapabilities)
+    implements(IManageCapabilities,
+               IChangePortraitCapability)
 
     ## setProperties uses setMemberProperties. no need to override.
 
@@ -425,5 +426,16 @@ class MemberData(BaseMemberData):
     def _getPlugins(self):
         return self.acl_users.plugins
 
+    # IChangePortraitCapability
+
+    def canModifyPortrait(self):
+        """True iff user's portrait can be modified (used in UI) """
+        plugins = self._getPlugins()
+        managers = plugins.listPlugins(IPortraitManagementPlugin)
+        for mid, manager in managers:
+            if (IChangePortraitCapability.providedBy(manager) and
+                    manager.allowModifyPortrait(self.getId())):
+                return True
+        return False
 
 InitializeClass(MemberData)

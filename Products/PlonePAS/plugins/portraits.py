@@ -12,6 +12,7 @@ from Products.CMFCore.utils import getToolByName
 from Products.CMFCore.permissions import ManagePortal
 from Products.PluggableAuthService.plugins.BasePlugin import BasePlugin
 from Products.PlonePAS.interfaces.plugins import IPortraitManagementPlugin
+from Products.PlonePAS.interfaces.capabilities import IChangePortraitCapability
 
 
 def manage_addZODBPortraitProvider(self, id, title='',
@@ -35,7 +36,8 @@ class ZODBPortraitProvider(BasePlugin):
 
     meta_type = 'ZODB Portrait Provider'
 
-    implements(IPortraitManagementPlugin)
+    implements(IPortraitManagementPlugin,
+               IChangePortraitCapability)
     security = ClassSecurityInfo()
 
     manage_options = (BasePlugin.manage_options +
@@ -94,6 +96,9 @@ class ZODBPortraitProvider(BasePlugin):
             result['md'] = len(storage)
         return result
 
+    # IChangePortraitCapability 
+    def allowModifyPortrait(self, member_id):
+        return True
         
 InitializeClass(ZODBPortraitProvider)
 
@@ -117,7 +122,9 @@ class PortalMemberdataPortraitProvider(BasePlugin):
 
     meta_type = 'PortalMemberdata Portrait Provider'
 
-    implements(IPortraitManagementPlugin)
+    implements(IPortraitManagementPlugin,
+               IChangePortraitCapability)
+
     def __init__(self, id, title='', **kw):
         """Create portrait provider.
         """
@@ -147,5 +154,9 @@ class PortalMemberdataPortraitProvider(BasePlugin):
             if member_id in mds:
                 mds._delObject(member_id)
             return True
+
+    # IChangePortraitCapability 
+    def allowModifyPortrait(self, member_id):
+        return True
 
 InitializeClass(PortalMemberdataPortraitProvider)

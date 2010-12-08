@@ -70,3 +70,11 @@ class IManageCapabilities(Interface):
 
     def canAssignRole(self, role):
         """True iff member can be assigned role."""
+
+class IChangePortraitCapability(Interface):
+    """Interface for plugin to say if it allows for change user portraits.
+    """
+
+    def allowModifyPortrait(self, member_id):
+        """True if this plugin will allow to set or remove member's portrait"""
+
