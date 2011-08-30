@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '4.0.4'
+version = '4.0.9'
 
 setup(name='Products.PlonePAS',
       version=version,
@@ -23,25 +23,20 @@ setup(name='Products.PlonePAS',
       extras_require=dict(
         test=[
             'Products.PloneTestCase',
+            'Products.Archetypes',
+        ],
+        atstorage=[
+            'Products.Archetypes',
         ]
       ),
       install_requires=[
         'setuptools',
-        'transaction',
         'plone.memoize',
-        'plone.openid',
         'plone.session',
-        'zope.component',
-        'zope.event',
-        'zope.interface',
-        'zope.publisher',
-        'Products.Archetypes',
+        'plone.i18n',
         'Products.CMFCore',
         'Products.GenericSetup',
         'Products.PluggableAuthService',
-        'Acquisition',
-        'DateTime',
-        'ZODB3',
         'Zope2 > 2.12.4',
       ],
 )

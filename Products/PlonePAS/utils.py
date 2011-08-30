@@ -2,8 +2,6 @@ from cStringIO import StringIO
 from urllib import quote as url_quote
 from urllib import unquote as url_unquote
 
-from PIL import Image
-
 from Products.CMFCore.utils import getToolByName
 from Products.PlonePAS.config import IMAGE_SCALE_PARAMS
 from Products.PluggableAuthService.interfaces.plugins import IGroupsPlugin
@@ -129,6 +127,8 @@ def scale_image(image_file, max_size=None, default_format=None):
         (50, 50)
 
     """
+    from PIL import Image
+    
     if max_size is None:
         max_size = IMAGE_SCALE_PARAMS['scale']
     if default_format is None:
@@ -186,3 +186,18 @@ def safe_unicode(value, encoding='utf-8'):
         except UnicodeDecodeError:
             value = value.decode('utf-8', 'replace')
     return value
+
+
+# Imported from Products.CMFCore.MemberdataTool as it has now been removed.
+class CleanupTemp:
+    """Used to cleanup _v_temps at the end of the request."""
+
+    def __init__(self, tool):
+        self._tool = tool
+
+    def __del__(self):
+        try:
+            del self._tool._v_temps
+        except (AttributeError, KeyError):
+            # The object has already been deactivated.
+            pass

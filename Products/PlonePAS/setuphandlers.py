@@ -54,8 +54,8 @@ def setupGroups(site):
     
     # Add Site Administrators group on Plone 4.1+ only.
     try:
-        pkg_resources.get_distribution('Plone>=4.1a1')
-    except pkg_resources.VersionConflict:
+        pkg_resources.get_distribution('Products.CMFPlone>=4.1a1')
+    except (pkg_resources.VersionConflict, pkg_resources.DistributionNotFound):
         pass
     else:
         if not uf.searchGroups(id='Site Administrators'):
@@ -78,7 +78,12 @@ def installPAS(portal):
     registerPluginTypes(portal.acl_users)
     setupPlugins(portal)
 
-    # TODO: This is highly questionable behaviour. Replacing the UF at the root.
+    # XXX Why are we doing this?
+    # According to Sidnei, "either cookie or basic auth for a user in the root folder doesn't work
+    # if it's not a PAS UF when you sign in to Plone. IIRC."
+    # See: http://twitter.com/#!/sidneidasilva/status/14030732112429056
+    # And here's the original commit: 
+    # http://dev.plone.org/collective/changeset/10720/PlonePAS/trunk/Extensions/Install.py
     migrate_root_uf(portal)
 
 

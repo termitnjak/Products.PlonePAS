@@ -4,7 +4,7 @@ Mutable Property Provider
 import copy
 
 from zope.interface import implements
-
+from AccessControl import ClassSecurityInfo
 from App.class_init import InitializeClass
 from App.special_dtml import DTMLFile
 from BTrees.OOBTree import OOBTree
@@ -49,6 +49,8 @@ class ZODBMutablePropertyProvider(BasePlugin):
 
     implements(IPropertiesPlugin, IUserEnumerationPlugin,
                IMutablePropertiesPlugin)
+
+    security = ClassSecurityInfo()
 
     def __init__(self, id, title='', schema=None, **kw):
         """Create in-ZODB mutable property provider.
@@ -134,7 +136,8 @@ class ZODBMutablePropertyProvider(BasePlugin):
             if defaultvalues.get("title"): defaultvalues["title"] = ""
         return defaultvalues
 
-
+    
+    security.declarePrivate('getPropertiesForUser')
     def getPropertiesForUser(self, user, request=None):
         """Get property values for a user or group.
         Returns a dictionary of values or a PropertySheet.
@@ -159,6 +162,7 @@ class ZODBMutablePropertyProvider(BasePlugin):
                                     schema=self._getSchema(isGroup), **data)
 
 
+    security.declarePrivate('setPropertiesForUser')
     def setPropertiesForUser(self, user, propertysheet):
         """Set the properties of a user or group based on the contents of a
         property sheet.
@@ -189,6 +193,7 @@ class ZODBMutablePropertyProvider(BasePlugin):
             self._storage.insert(user.getId(), properties)
 
 
+    security.declarePrivate('deleteUser')
     def deleteUser(self, user_id):
         """Delete all user properties
         """
@@ -199,6 +204,7 @@ class ZODBMutablePropertyProvider(BasePlugin):
             pass
 
 
+    security.declarePrivate('testMemberData')
     def testMemberData(self, memberdata, criteria, exact_match=False):
         """Test if a memberdata matches the search criteria.
         """
@@ -227,6 +233,7 @@ class ZODBMutablePropertyProvider(BasePlugin):
 
         return True
 
+    security.declarePrivate('enumerateUsers')
     def enumerateUsers( self
                       , id=None
                       , login=None
@@ -237,17 +244,17 @@ class ZODBMutablePropertyProvider(BasePlugin):
         """ See IUserEnumerationPlugin.
         """
         plugin_id = self.getId()
+
+        # This plugin can't search for a user by id or login, because there is
+        # no such keys in the storage (data dict in the comprehensive list)
+        # If kw is empty or not, we continue the search.
+        if id is not None or login is not None:
+            return ()
+
         criteria=copy.copy(kw)
-        if id is not None:
-            criteria["id"]=id
-        if login is not None:
-            criteria["login"]=login
-        user_info = []
-        if not kw and id:
-            users = self._storage.get(id, None)
-        else:
-            users=[ (user,data) for (user,data) in self._storage.items()
-                        if self.testMemberData(data, criteria, exact_match) and not data.get('isGroup', False)]
+
+        users=[ (user,data) for (user,data) in self._storage.items()
+                    if self.testMemberData(data, criteria, exact_match) and not data.get('isGroup', False)]
 
         user_info=[ { 'id' : self.prefix + user_id,
                      'login' : user_id,

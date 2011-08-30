@@ -1,8 +1,66 @@
 Changelog
 =========
 
-4.0.4 - unreleased
+4.0.9 - unreleased
 ------------------
+
+- Cleaned up and reduced dependencies. New extra ``atstorage`` for the rare case 
+  someone uses PlonePAS w/o Plone but with Archetypes (if this is this 
+  possible). [jensens]
+
+
+4.0.8 - 2011-06-30
+------------------
+
+- Fire IPrincipalDeleted when a user is deleted.
+  [stefan, ggozad]
+
+4.0.7 - 2011-05-12
+------------------
+
+- Copy in CleanupTemp from CMFCore as it has been removed from CMFCore 2.3.
+  [elro]
+
+- Move import step to be registered in ZCML rather than XML.
+  Remove the non-existent dependency on `plonepas-content`.
+  [kiorky]
+
+4.0.6 - 2011-02-25
+------------------
+
+- Fix missing and broken security declarations.
+  [davisagli]
+
+4.0.5 - 2011-02-14
+------------------
+
+- Avoid breaking on startup if PIL isn't present.
+  [davisagli]
+
+- Use 'defaultUser.png' as the default user portrait, since the .gif version
+  has been deprecated for a long time now. See 
+  http://dev.plone.org/plone/changeset/36350
+  [mj]
+
+4.0.4 - 2011-01-03
+------------------
+
+- Remove plone.openid dependency in setup.py, import errors are already caught
+  in PASInfoView.
+  [elro]
+
+- The code to search by id in mutable_properties.enumerateUsers didn't work at
+  all, an exception was always raised and it was actually a good thing.
+  We tried to implement it in 3.10 and we had strange listing in Plone UI. Then
+  we reverted it in the next version so the behavior was backward compatible
+  with previous versions.
+  If we allow search by id, we can potentially break other part of the code. For
+  example acl_users/portal_role_manager/manage_roles will break because
+  Products.PluggableAuthService.plugins.ZODBRoleManager.listAssignedPrincipals
+  raises MultiplePrincipalError, and maybe it will break somewhere else.
+  Versions 4.0.4 and 3.13 use now the same algorithm.
+  References http://dev.plone.org/plone/ticket/9361
+  [vincenfretin]
 
 - When calling editGroup method, avoid error
   while trying to remove dynamic 'AuthenticatedUsers' group.
@@ -253,7 +311,7 @@ Changelog
   patched method and introduced different behavior compared to i.e in
   a similar method on LDAPMultiPlugins. For details on the former
   patch see:
-  https://dev.plone.org/collective/changeset/41512/PlonePAS/trunk/pas.py
+  http://dev.plone.org/collective/changeset/41512/PlonePAS/trunk/pas.py
   [jensens]
 
 - Moved a couple DTML files here from CMFPlone that got left out of the earlier
