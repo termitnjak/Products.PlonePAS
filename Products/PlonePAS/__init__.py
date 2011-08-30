@@ -17,6 +17,7 @@ from plugins import cookie_handler
 from plugins import autogroup
 from plugins import portraits
 from plugins import gravatar_portrait
+from plugins import portrait_ldap_demo
 
 #################################
 # pas monkies
@@ -60,6 +61,7 @@ try:
     registerMultiPlugin( portraits.ZODBPortraitProvider.meta_type )
     registerMultiPlugin( portraits.PortalMemberdataPortraitProvider.meta_type )
     registerMultiPlugin( gravatar_portrait.GravatarPortraitProvider.meta_type )
+    registerMultiPlugin( portrait_ldap_demo.LDAPPortraitProvider.meta_type )
 except RuntimeError:
     # make refresh users happy
     pass
@@ -153,5 +155,11 @@ def initialize(context):
                            permission = add_user_folders,
                            constructors = ( gravatar_portrait.manage_addGravatarPortraitProviderForm,
                                             gravatar_portrait.manage_addGravatarPortraitProvider ),
+                           visibility = None
+                           )
+    context.registerClass( portrait_ldap_demo.LDAPPortraitProvider,
+                           permission = add_user_folders,
+                           constructors = ( portrait_ldap_demo.manage_addLDAPPortraitProviderForm,
+                                            portrait_ldap_demo.manage_addLDAPPortraitProvider ),
                            visibility = None
                            )

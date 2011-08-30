@@ -31,4 +31,12 @@
       allowed_interface="Products.PlonePAS.interfaces.browser.IPASSearchView"
       />
 
+  <browser:page
+      for="..plugins.portrait_ldap_demo.ILDAPPortraitProvider"
+      name="portrait"
+      class="..plugins.portrait_ldap_demo.PortraitView"
+      permission="zope2.View"
+      attribute="portrait"
+      />
+
 </configure>
