@@ -39,12 +39,11 @@ class PASSearchView(BrowserView):
         return output.values()
 
 
-    def sort(self, results, key):
-        idnormalizer = queryUtility(IIDNormalizer).normalize(a)
+    def sort(self, results, sort_key):
+        idnormalizer = queryUtility(IIDNormalizer)
         def key_func(a):
-            return idnormalizer.normalize(a)
-        results.sort(key=key_func)
-        return results
+            return idnormalizer.normalize(a.get(sort_key, a))
+        return sorted(results, key=key_func)
 
 
     def searchUsers(self, sort_by=None, **criteria):
