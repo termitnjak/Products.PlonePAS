@@ -24,7 +24,9 @@ from zExceptions import BadRequest
 from ZODB.POSException import ConflictError
 from zope import event
 from zope.component import getUtility
+from zope.globalrequest import getRequest
 from zope.interface import implements
+from ZPublisher.BaseRequest import RequestContainer
 
 from Products.CMFCore.exceptions import AccessControl_Unauthorized
 from Products.CMFCore.interfaces import ISiteRoot
@@ -37,8 +39,8 @@ from Products.CMFCore.permissions import View
 from Products.CMFCore.permissions import ListPortalMembers
 from Products.CMFCore.utils import _checkPermission
 from Products.CMFCore.utils import _dtmldir
-from Products.CMFCore.utils import _getAuthenticatedUser
 from Products.CMFCore.utils import getToolByName
+from Products.CMFCore.utils import registerToolInterface
 from Products.CMFCore.utils import UniqueObject
 
 from Products.PlonePAS.events import UserLoggedInEvent
@@ -129,9 +131,12 @@ class MembershipTool(UniqueObject, Folder):
     def getMembersFolder(self):
         """ Get the members folder object.
         """
-        parent = aq_parent( aq_inner(self) )
+        parent = aq_parent(aq_inner(self))
         members = getattr(parent, self.membersfolder_id, None)
-        return members
+        if members is None:
+            return None
+        request_container = RequestContainer(REQUEST=getRequest())
+        return members.__of__(request_container)
 
     security.declareProtected(ManagePortal, 'getMemberareaCreationFlag')
     def getMemberareaCreationFlag(self):
@@ -438,7 +443,7 @@ class MembershipTool(UniqueObject, Folder):
         '''
         Returns 1 if the user is not logged in.
         '''
-        u = _getAuthenticatedUser(self)
+        u = getSecurityManager().getUser()
         if u is None or u.getUserName() == 'Anonymous User':
             return 1
         return 0
@@ -482,7 +487,7 @@ class MembershipTool(UniqueObject, Folder):
                  DeprecationWarning, stacklevel=2)
 
         if not self.isAnonymousUser():
-            user = _getAuthenticatedUser(self)
+            user = getSecurityManager().getUser()
             name = user.getUserName()
             # this really does need to be the user name, and not the user id,
             # because we're dealing with authentication credentials
@@ -559,7 +564,7 @@ class MembershipTool(UniqueObject, Folder):
         """
         uf = self._huntUserFolder(member_id, context)
         if uf is not None:
-            return uf.getUserById(member_id)
+            return uf.getUserById(member_id).__of__(uf)
 
     def __getPUS(self):
         """ Retrieve the nearest user folder
@@ -775,7 +780,7 @@ class MembershipTool(UniqueObject, Folder):
         Returns the currently authenticated member object
         or the Anonymous User.  Never returns None.
         '''
-        u = _getAuthenticatedUser(self)
+        u = getSecurityManager().getUser()
         if u is None:
             u = nobody
         return self.wrapUser(u)
@@ -1057,3 +1062,4 @@ class MembershipTool(UniqueObject, Folder):
         return bad_member_ids
 
 InitializeClass(MembershipTool)
+registerToolInterface('portal_membership', membership.IMembershipTool)
