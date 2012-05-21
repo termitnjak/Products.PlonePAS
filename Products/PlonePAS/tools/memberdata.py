@@ -1,19 +1,31 @@
-from App.class_init import InitializeClass
-from Acquisition import aq_base
 from AccessControl import ClassSecurityInfo
-
-from zope.interface import implements
-
+from AccessControl.requestmethod import postonly
+from Acquisition import aq_base
+from Acquisition import aq_inner
+from Acquisition import aq_parent
+from App.class_init import InitializeClass
+from App.special_dtml import DTMLFile
+from BTrees.OOBTree import OOBTree
+from DateTime import DateTime
+from OFS.PropertyManager import PropertyManager
+from OFS.SimpleItem import SimpleItem
 from Products.BTreeFolder2.BTreeFolder2 import BTreeFolder2
+from Products.CMFCore.exceptions import BadRequest
+from Products.CMFCore.interfaces import IMemberData
+from Products.CMFCore.interfaces import IMemberDataTool
 from Products.CMFCore.permissions import ManagePortal
+from Products.CMFCore.permissions import SetOwnProperties
+from Products.CMFCore.permissions import ViewManagementScreens
+from Products.CMFCore.utils import _dtmldir
 from Products.CMFCore.utils import getToolByName
-from Products.CMFCore.MemberDataTool import MemberData as BaseMemberData
-from Products.CMFCore.MemberDataTool import MemberDataTool as BaseTool
-
+from Products.CMFCore.utils import registerToolInterface
+from Products.CMFCore.utils import UniqueObject
 from Products.PluggableAuthService.interfaces.authservice \
     import IPluggableAuthService
 from Products.PluggableAuthService.interfaces.plugins \
     import IPropertiesPlugin, IRoleAssignerPlugin
+from zope.interface import implements
+from ZPublisher.Converters import type_converters
 
 from Products.PlonePAS.interfaces.plugins import IUserManagement
 from Products.PlonePAS.interfaces.group import IGroupManagement
@@ -24,21 +36,50 @@ from Products.PlonePAS.interfaces.capabilities \
     import IGroupCapability, IAssignRoleCapability
 from Products.PlonePAS.interfaces.capabilities import IManageCapabilities
 from Products.PlonePAS.utils import getCharset
-from AccessControl.requestmethod import postonly
 
 _marker = object()
 
 
-class MemberDataTool(BaseTool):
+class MemberDataTool(UniqueObject, SimpleItem, PropertyManager):
     """PAS-specific implementation of memberdata tool.
     """
 
+    implements(IMemberDataTool)
+
+    id = 'portal_memberdata'
     meta_type = "PlonePAS MemberData Tool"
     security = ClassSecurityInfo()
     toolicon = 'tool.gif'
 
+    _properties = (
+        {'id': 'email', 'type': 'string', 'mode': 'w'},
+        {'id': 'portal_skin', 'type': 'string', 'mode': 'w'},
+        {'id': 'listed', 'type': 'boolean', 'mode': 'w'},
+        {'id': 'login_time', 'type': 'date', 'mode': 'w'},
+        {'id': 'last_login_time', 'type': 'date', 'mode': 'w'},
+        {'id': 'fullname', 'type': 'string', 'mode': 'w'},
+        )
+    email = ''
+    fullname = ''
+    last_login_time = DateTime('1970/01/01 00:00:00 UTC')  # epoch
+    listed = False
+    login_time = DateTime('1970/01/01 00:00:00 UTC')  # epoch
+    portal_skin = ''
+
+    manage_options = (
+        ({'label': 'Overview', 'action': 'manage_overview'},
+         {'label': 'Contents', 'action': 'manage_showContents'}) +
+        PropertyManager.manage_options +
+        SimpleItem.manage_options)
+
+    security.declareProtected(ManagePortal, 'manage_overview')
+    manage_overview = DTMLFile('explainMemberDataTool', _dtmldir)
+
+    security.declareProtected(ViewManagementScreens, 'manage_showContents')
+    manage_showContents = DTMLFile('memberdataContents', _dtmldir)
+
     def __init__(self):
-        BaseTool.__init__(self)
+        self._members = OOBTree()
         self.portraits = BTreeFolder2(id='portraits')
 
     def _getPortrait(self, member_id):
@@ -56,6 +97,26 @@ class MemberDataTool(BaseTool):
         if member_id in self.portraits:
             self.portraits._delObject(member_id)
 
+    security.declarePrivate('getMemberDataContents')
+    def getMemberDataContents(self):
+        '''
+        Return the number of members stored in the _members
+        BTree and some other useful info
+        '''
+        mtool = getToolByName(self, 'portal_membership')
+        members = self._members
+        user_list = mtool.listMemberIds()
+        member_list = members.keys()
+        member_count = len(members)
+        orphan_count = 0
+
+        for member in member_list:
+            if member not in user_list:
+                orphan_count = orphan_count + 1
+
+        return [{'member_count': member_count,
+                 'orphan_count': orphan_count}]
+
     security.declarePrivate('pruneMemberDataContents')
     def pruneMemberDataContents(self):
         '''
@@ -63,11 +124,16 @@ class MemberDataTool(BaseTool):
         tool with the list in the actual underlying acl_users
         and delete anything not in acl_users
         '''
-        BaseTool.pruneMemberDataContents(self)
         membertool = getToolByName(self, 'portal_membership')
-        portraits = self.portraits
+        members = self._members
         user_list = membertool.listMemberIds()
 
+        for member_id in list(members.keys()):
+            if member_id not in user_list:
+                del members[member_id]
+
+        portraits = self.portraits
+        user_list = membertool.listMemberIds()
         for tuple in portraits.items():
             member_id = tuple[0]
             if member_id not in user_list:
@@ -122,6 +188,36 @@ class MemberDataTool(BaseTool):
             count += 1
 
         return count
+
+    security.declarePrivate('searchMemberData')
+    def searchMemberData(self, search_param, search_term, attributes=()):
+        """ Search members. """
+        res = []
+        if not search_param:
+            return res
+
+        mtool = getToolByName(self, 'portal_membership')
+        if len(attributes) == 0:
+            attributes = ('id', 'email')
+
+        if search_param == 'username':
+            search_param = 'id'
+
+        for user_id in self._members.keys():
+            u = mtool.getMemberById(user_id)
+            if u is not None:
+                memberProperty = u.getProperty
+                searched = memberProperty(search_param, None)
+
+                if searched is not None and searched.find(search_term) != -1:
+                    user_data = {}
+                    for desired in attributes:
+                        if desired == 'id':
+                            user_data['username'] = memberProperty(desired, '')
+                        else:
+                            user_data[desired] = memberProperty(desired, '')
+                    res.append(user_data)
+        return res
 
     security.declarePrivate('searchMemberDataContents')
     def searchMemberDataContents(self, search_param, search_term):
@@ -189,6 +285,12 @@ class MemberDataTool(BaseTool):
         # the user as context.
         return members[id].__of__(self).__of__(u)
 
+    security.declarePrivate('registerMemberData')
+    def registerMemberData(self, m, id):
+        """ Add the given member data to the _members btree.
+        """
+        self._members[id] = aq_base(m)
+
     @postonly
     def deleteMemberData(self, member_id, REQUEST=None):
         """ Delete member data of specified member.
@@ -219,42 +321,92 @@ class MemberDataTool(BaseTool):
         return self.acl_users.plugins
 
 InitializeClass(MemberDataTool)
+registerToolInterface('portal_memberdata', IMemberDataTool)
 
 
-class MemberData(BaseMemberData):
+class MemberData(SimpleItem):
 
     security = ClassSecurityInfo()
-    implements(IManageCapabilities)
+    implements(IMemberData, IManageCapabilities)
 
-    ## setProperties uses setMemberProperties. no need to override.
+    def __init__(self, tool, id):
+        self.id = id
 
+    security.declarePrivate('notifyModified')
+    def notifyModified(self):
+        # Links self to parent for full persistence.
+        self.getTool().registerMemberData(self, self.getId())
+
+    security.declarePublic('getUser')
+    def getUser(self):
+        # The user object is our context, but it's possible for
+        # restricted code to strip context while retaining
+        # containment.  Therefore we need a simple security check.
+        parent = aq_parent(self)
+        bcontext = aq_base(parent)
+        bcontainer = aq_base(aq_parent(aq_inner(self)))
+        if bcontext is bcontainer or not hasattr(bcontext, 'getUserName'):
+            raise 'MemberDataError', "Can't find user data"
+        # Return the user object, which is our context.
+        return parent
+
+    def getTool(self):
+        return aq_parent(aq_inner(self))
+
+    security.declarePublic('getMemberId')
+    def getMemberId(self):
+        return self.getUser().getId()
+
+    security.declareProtected(SetOwnProperties, 'setProperties')
+    def setProperties(self, properties=None, **kw):
+        '''Allows the authenticated member to set his/her own properties.
+        Accepts either keyword arguments or a mapping for the "properties"
+        argument.
+        '''
+        # XXX: this method violates the rules for tools/utilities:
+        # it depends on a non-utility tool
+        if properties is None:
+            properties = kw
+        membership = getToolByName(self, 'portal_membership')
+        registration = getToolByName(self, 'portal_registration', None)
+        if not membership.isAnonymousUser():
+            member = membership.getAuthenticatedMember()
+            if registration:
+                failMessage = registration.testPropertiesValidity(
+                    properties, member)
+                if failMessage is not None:
+                    raise BadRequest(failMessage)
+            member.setMemberProperties(properties)
+        else:
+            raise BadRequest('Not logged in.')
+
+    security.declarePrivate('setMemberProperties')
     def setMemberProperties(self, mapping, force_local=0):
         """PAS-specific method to set the properties of a
         member. Ignores 'force_local', which is not reliably present.
         """
+        modified = False
         sheets = None
-
-        # We could pay attention to force_local here...
-        if not IPluggableAuthService.providedBy(self.acl_users):
-            # Defer to base impl in absence of PAS, a PAS user, or
-            # property sheets
-            return BaseMemberData.setMemberProperties(self, mapping)
-        else:
-            # It's a PAS! Whee!
-            user = self.getUser()
-            sheets = getattr(user, 'getOrderedPropertySheets', lambda: None)()
-
-            # We won't always have PlonePAS users, due to acquisition,
-            # nor are guaranteed property sheets
-            if not sheets:
-                # Defer to base impl if we have a PAS but no property
-                # sheets.
-                return BaseMemberData.setMemberProperties(self, mapping)
+        user = self.getUser()
+        sheets = getattr(user, 'getOrderedPropertySheets', lambda: None)()
+        if not sheets:
+            # We have a PAS but no property sheets
+            tool = self.getTool()
+            for id in tool.propertyIds():
+                if id in mapping:
+                    if id not in self.__class__.__dict__:
+                        value = mapping[id]
+                        if isinstance(value, basestring):
+                            proptype = tool.getPropertyType(id) or 'string'
+                            if proptype in type_converters:
+                                value = type_converters[proptype](value)
+                        setattr(self, id, value)
+                        modified = True
+            if modified:
+                self.notifyModified()
+            return
 
         # If we got this far, we have a PAS and some property sheets.
-        # XXX track values set to defer to default impl
-        # property routing?
-        modified = False
         for k, v in mapping.items():
             if v == None:
                 continue
@@ -266,27 +418,51 @@ class MemberData(BaseMemberData):
                     modified = True
                 else:
                     break
-                    #raise RuntimeError, ("Mutable property provider "
-                    #                     "shadowed by read only provider")
         if modified:
             self.notifyModified()
 
+    def _base_getProperty(self, id, default=_marker):
+        tool = self.getTool()
+        base = aq_base(self)
+
+        # First, check the wrapper (w/o acquisition).
+        value = getattr(base, id, _marker)
+        if value is not _marker:
+            return value
+
+        # Then, check the tool and the user object for a value.
+        tool_value = tool.getProperty(id, _marker)
+        user_value = getattr(self.getUser(), id, _marker)
+
+        # If the tool doesn't have the property, use user_value or default
+        if tool_value is _marker:
+            if user_value is not _marker:
+                return user_value
+            elif default is not _marker:
+                return default
+            else:
+                raise ValueError('The property %s does not exist' % id)
+
+        # If the tool has an empty property and we have a user_value, use it
+        if not tool_value and user_value is not _marker:
+            return user_value
+
+        # Otherwise return the tool value
+        return tool_value
+
+    security.declarePublic('getProperty')
     def getProperty(self, id, default=_marker):
         """PAS-specific method to fetch a user's properties. Looks
         through the ordered property sheets.
         """
         sheets = None
-        if not IPluggableAuthService.providedBy(self.acl_users):
-            return BaseMemberData.getProperty(self, id)
-        else:
-            # It's a PAS! Whee!
-            user = self.getUser()
-            sheets = getattr(user, 'getOrderedPropertySheets', lambda: None)()
+        user = self.getUser()
+        sheets = getattr(user, 'getOrderedPropertySheets', lambda: None)()
 
-            # we won't always have PlonePAS users, due to acquisition,
-            # nor are guaranteed property sheets
-            if not sheets:
-                return BaseMemberData.getProperty(self, id, default)
+        # we won't always have PlonePAS users, due to acquisition,
+        # nor are guaranteed property sheets
+        if not sheets:
+            return self._base_getProperty(id, default)
 
         charset = getCharset(self)
 
@@ -306,11 +482,64 @@ class MemberData(BaseMemberData):
 
         # Couldn't find the property in the property sheets. Try to
         # delegate back to the base implementation.
-        return BaseMemberData.getProperty(self, id, default)
+        return self._base_getProperty(id, default)
 
+    security.declarePrivate('getPassword')
     def getPassword(self):
         """Returns None. Present to avoid NotImplementedError."""
         return None
+
+    security.declarePrivate('setSecurityProfile')
+    def setSecurityProfile(self, password=None, roles=None, domains=None):
+        """Set the user's basic security profile"""
+        u = self.getUser()
+
+        # The Zope User API is stupid, it should check for None.
+        if roles is None:
+            roles = list(u.getRoles())
+            if 'Authenticated' in roles:
+                roles.remove('Authenticated')
+        if domains is None:
+            domains = u.getDomains()
+
+        u.userFolderEditUser(u.getUserName(), password, roles, domains)
+
+    def __str__(self):
+        return self.getMemberId()
+
+    security.declarePublic('getUserName')
+    def getUserName(self):
+        """Return the username of a user"""
+        return self.getUser().getUserName()
+
+    security.declarePublic('getId')
+    def getId(self):
+        """Get the ID of the user. The ID can be used, at least from
+        Python, to get the user from the user's
+        UserDatabase"""
+        return self.getUser().getId()
+
+    security.declarePublic('getRoles')
+    def getRoles(self):
+        """Return the list of roles assigned to a user."""
+        return self.getUser().getRoles()
+
+    security.declarePublic('getRolesInContext')
+    def getRolesInContext(self, object):
+        """Return the list of roles assigned to the user,
+           including local roles assigned in context of
+           the passed in object."""
+        return self.getUser().getRolesInContext(object)
+
+    security.declarePublic('getDomains')
+    def getDomains(self):
+        """Return the list of domain restrictions for a user"""
+        return self.getUser().getDomains()
+
+    security.declarePublic('has_role')
+    def has_role(self, roles, object=None):
+        """Check to see if a user has a given role or roles."""
+        return self.getUser().has_role(roles, object)
 
     ## IManageCapabilities methods
 
