@@ -27,4 +27,9 @@
   <five:deprecatedManageAddDelete
       class=".plugins.role.GroupAwareRoleManager" />
 
+  <utility 
+        provides="plone.keyring.interfaces.IKeyManager"
+        factory="plone.keyring.keymanager.KeyManager"
+        />
+
 </configure>

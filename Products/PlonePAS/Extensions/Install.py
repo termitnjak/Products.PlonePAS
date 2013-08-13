@@ -5,6 +5,8 @@ from Products.PluggableAuthService.interfaces.authservice \
 from Products.PluggableAuthService.interfaces.plugins \
      import ICredentialsResetPlugin
 from Products.PluggableAuthService.interfaces.plugins \
+     import ICredentialsUpdatePlugin
+from Products.PluggableAuthService.interfaces.plugins \
      import IChallengePlugin
 from Products.PluggableAuthService.Extensions.upgrade \
      import replace_acl_users
@@ -186,7 +188,8 @@ def setupPlugins(portal):
 
 def setupAuthPlugins(portal, pas, plone_pas,
                      deactivate_basic_reset=True,
-                     deactivate_cookie_challenge=False):
+                     deactivate_cookie_challenge=False,
+                     desctivate_cookie_update=False):
     uf = portal.acl_users
     logger.debug("Cookie plugin setup")
 
@@ -237,6 +240,11 @@ def setupAuthPlugins(portal, pas, plone_pas,
                                      'credentials_basic_auth')
     if deactivate_cookie_challenge:
         uf.plugins.deactivatePlugin(IChallengePlugin,
+                                     'credentials_cookie_auth')
+    if desctivate_cookie_update:
+        uf.plugins.deactivatePlugin(ICredentialsResetPlugin,
+                                     'credentials_cookie_auth')
+        uf.plugins.deactivatePlugin(ICredentialsUpdatePlugin,
                                      'credentials_cookie_auth')
 
 
@@ -304,7 +312,15 @@ def migrate_root_uf(self):
     # Setup authentication plugins
     setupAuthPlugins(parent, pas, plone_pas,
                      deactivate_basic_reset=False,
-                     deactivate_cookie_challenge=True)
+                     deactivate_cookie_challenge=True,
+                     desctivate_cookie_update=True)
+
+    # Install session plugin - Plone PLIP #13700
+    found = uf.objectIds(['Plone Session Plugin'])
+    if not found:
+        manage_addSessionPlugin(plone_pas, 'session')
+        logger.debug("Added Plone Session Plugin.")
+        activatePluginInterfaces(parent, "session")
 
     # Activate *all* interfaces for user manager. IUserAdder is not
     # activated for some reason by default.
