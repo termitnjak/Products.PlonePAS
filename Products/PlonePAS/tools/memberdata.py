@@ -183,10 +183,15 @@ class MemberDataTool(BaseTool):
         members = self._members
         if not id in members:
             base = aq_base(self)
-            members[id] = MemberData(base, id)
-        # Return a wrapper with self as containment and
-        # the user as context.
-        return members[id].__of__(self).__of__(u)
+            md = MemberData(base, id)
+            if len(self._p_jar._registered_objects) > 0:
+                # XXX do not write on read
+                members[id] = md
+            return md.__of__(self).__of__(u)
+        else:
+            # Return a wrapper with self as containment and
+            # the user as context.
+            return members[id].__of__(self).__of__(u)
 
     @postonly
     def deleteMemberData(self, member_id, REQUEST=None):
