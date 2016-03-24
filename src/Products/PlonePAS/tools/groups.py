@@ -16,6 +16,9 @@ from Products.PlonePAS.permissions import SetGroupOwnership
 from Products.PlonePAS.permissions import ViewGroups
 from Products.PlonePAS.utils import getGroupsForPrincipal
 from Products.PluggableAuthService.events import GroupDeleted
+from Products.PluggableAuthService.events import GroupAdded
+from Products.PluggableAuthService.events import GroupEddited
+
 from Products.PluggableAuthService.PluggableAuthService import \
     _SWALLOWABLE_PLUGIN_EXCEPTIONS
 from Products.PluggableAuthService.interfaces.plugins import \
@@ -85,6 +88,7 @@ class GroupsTool(UniqueObject, SimpleItem):
         if success:
             group = self.getGroupById(id)
             group.setGroupProperties(properties or kw)
+            notify(GroupAdded(id))
 
         return success
 
@@ -116,6 +120,7 @@ class GroupsTool(UniqueObject, SimpleItem):
                     title=kw.get('title'),
                     description=kw.get('description')
                 )
+                notify(GroupEddited(id))
                 break
 
         if roles is not None:
