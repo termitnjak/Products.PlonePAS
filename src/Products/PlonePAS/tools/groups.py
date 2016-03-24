@@ -88,7 +88,7 @@ class GroupsTool(UniqueObject, SimpleItem):
         if success:
             group = self.getGroupById(id)
             group.setGroupProperties(properties or kw)
-            notify(GroupAdded(id))
+            notify(GroupAdded(id, REQUEST))
 
         return success
 
@@ -120,7 +120,7 @@ class GroupsTool(UniqueObject, SimpleItem):
                     title=kw.get('title'),
                     description=kw.get('description')
                 )
-                notify(GroupEddited(id))
+                notify(GroupEddited(id, REQUEST))
                 break
 
         if roles is not None:
